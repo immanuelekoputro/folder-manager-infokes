@@ -6,98 +6,33 @@ import { fetchMenu as fetchMenuApi } from "@/services/menu.service";
 export const useMenuStore = defineStore("menu", () => {
   const activeMenu = ref<MenuRevampInterface[] | null>(null);
   const mockMenu = ref<MenuRevampInterface[]>([]);
-  // const mockMenu1 = ref<MenuRevampInterface[]>([
-  //   {
-  //     id: 2,
-  //     name: "Menu 2",
-  //     icon: "pi pi-home",
-  //     parentId: 1,
-  //     isExpanded: false,
-  //   },
-  //   {
-  //     id: 3,
-  //     name: "Menu 3",
-  //     icon: "pi pi-home",
-  //     parentId: 1,
-  //     isExpanded: false,
-  //   },
-  //   {
-  //     id: 4,
-  //     name: "Menu 4",
-  //     icon: "pi pi-home",
-  //     parentId: 1,
-  //     isExpanded: false,
-  //   },
-  // ]);
-  // const mockMenu2 = ref<MenuRevampInterface[]>([
-  //   {
-  //     id: 5,
-  //     name: "Menu 5",
-  //     icon: "pi pi-home",
-  //     parentId: 2,
-  //     isExpanded: false,
-  //   },
-  //   {
-  //     id: 6,
-  //     name: "Menu 6",
-  //     icon: "pi pi-home",
-  //     parentId: 2,
-  //     isExpanded: false,
-  //   },
-  // ]);
-  // const mockMenu5 = ref<MenuRevampInterface[]>([
-  //   {
-  //     id: 7,
-  //     name: "Menu 7",
-  //     icon: "pi pi-home",
-  //     parentId: 5,
-  //     isExpanded: false,
-  //   },
-  //   {
-  //     id: 8,
-  //     name: "Menu 8",
-  //     icon: "pi pi-home",
-  //     parentId: 5,
-  //     isExpanded: false,
-  //   },
-  // ]);
-  // const mockMenu3 = ref<MenuRevampInterface[]>([
-  //   {
-  //     id: 9,
-  //     name: "Menu 9",
-  //     icon: "pi pi-home",
-  //     parentId: 3,
-  //     isExpanded: false,
-  //   },
-  //   {
-  //     id: 10,
-  //     name: "Menu 10",
-  //     icon: "pi pi-home",
-  //     parentId: 3,
-  //     isExpanded: false,
-  //   },
-  // ]);
-  // const childrenMap: Record<number, MenuRevampInterface[]> = {
-  //   1: mockMenu1.value,
-  //   2: mockMenu2.value,
-  //   3: mockMenu3.value,
-  //   5: mockMenu5.value,
-  // };
+  const isOpenFile = ref(false);
 
-  const setMenuInitiate = async () => {
-    const temp = await fetchMenu(null);
-    mockMenu.value = temp.map((item) => ({
-      id: item.id,
-      name: item.name,
-      parentId: item.parentId,
-      isExpanded: false,
-      icon: "pi pi-file",
-      isFolder: item.isFolder,
-      mimeType: item.mimeType,
-    }));
-  };
+  // fungsi untuk mengambol semua menu awal
+  async function collectAllMenus(id: number | null): Promise<MenuRevampInterface[]> {
+    const items = await fetchMenu(id);
+    const result: MenuRevampInterface[] = [];
+    for (const item of items) {
+      item.isExpanded = true;
+      result.push(item);
+      if (item.isFolder) {
+        const children = await collectAllMenus(item.id);
+        const temp = children.map((child) => ({
+          ...child,
+          isExpanded: true,
+        }));
+        result.push(...temp);
+      }
+    }
+    return result;
+  }
 
-  const fetchMenu = async (id: number | null): Promise<MenuRevampInterface[]> => {
+  async function setMenuInitiate() {
+    mockMenu.value = await collectAllMenus(null);
+  }
+
+  // fungsi untuk meminta data menu dari be
+  async function fetchMenu(id: number | null): Promise<MenuRevampInterface[]> {
     const result = await fetchMenuApi(id);
     return result.data.map((item) => ({
       id: item.id,
@@ -108,83 +43,91 @@ export const useMenuStore = defineStore("menu", () => {
       isFolder: item.isFolder,
       mimeType: item.mimeType,
     }));
-  };
+  }
 
-  const removeDescendants = (parentId: number) => {
+  // fungsi untuk hapus child menu
+  function removeChildMenu(parentId: number) {
     const children = mockMenu.value.filter((m) => m.parentId === parentId);
     for (const child of children) {
       child.isExpanded = false;
-      removeDescendants(child.id);
+      removeChildMenu(child.id);
     }
     mockMenu.value = mockMenu.value.filter((m) => m.parentId !== parentId);
-  };
+  }
 
-  const setActiveMenuMulti = async (menuId: number): Promise<MenuRevampInterface[] | null> => {
+  async function setActiveMenuMulti(
+    menuId: number,
+    isFromFolder: boolean = false,
+  ): Promise<MenuRevampInterface[] | null> {
     const menu = mockMenu.value.find((m) => m.id === menuId);
     if (!menu) return null;
 
-    const isExpanding = !menu.isExpanded;
+    if (!menu.isFolder) {
+      openFile();
+      return null;
+    }
+
+    const isExpanding = menu.isExpanded && isFromFolder ? true : !menu.isExpanded;
+
     menu.isExpanded = isExpanding;
 
     if (isExpanding) {
+      // (1) Case jika akan membuka folder
       const children = (await fetchMenu(menuId)) ?? [];
       activeMenu.value = children;
-      const existingIds = mockMenu.value.map((m) => m.id);
-      const newChildren = children.filter((c) => !existingIds.includes(c.id));
+
+      const temp = children.map((c) => c.id);
+
+      // hapus dulu child yang sudah ada di mockMenu, karena akan di tambahkan lagi dengan data yang baru, jadi tidak terjadi duplikasi
+      mockMenu.value = mockMenu.value.filter((m) => !temp.includes(m.id));
+
+      // cari index parent, jadi children akan di masukan di setelah parent
       const parentIndex = mockMenu.value.findIndex((m) => m.id === menuId);
-      mockMenu.value.splice(parentIndex + 1, 0, ...newChildren);
-      return children.map((item) => ({ ...item }));
+      return mockMenu.value.splice(parentIndex + 1, 0, ...children);
     } else {
-      removeDescendants(menuId);
-      const lastMenu = mockMenu.value.filter((m) => m.isExpanded);
-      const lastMenuId = lastMenu[lastMenu.length - 1] ?? null;
-      activeMenu.value = lastMenuId ? ((await fetchMenu(lastMenuId.id)) ?? []) : null;
-      return activeMenu.value ? activeMenu.value.map((item) => ({ ...item })) : null;
+      // (2) Case jika akan menutup folder
+
+      // hapus secara langsung child dari parent yang di tutup
+      removeChildMenu(menuId);
+
+      // cari folder yang 1 line yang terbuka
+      if (menu.parentId === null) {
+        // (2.1) jika menu yang di tutup adalah root, maka cari sibling yang terbuka, jika tidak ada cari menu terakhir yang terbuka
+        const sibling = mockMenu.value.find((m) => m.parentId === null && m.isExpanded);
+        if (sibling) {
+          return (activeMenu.value = (await fetchMenu(sibling.id)) ?? []);
+        } else {
+          const lastMenu = mockMenu.value.filter((m) => m.isExpanded);
+          const lastMenuId = lastMenu[lastMenu.length - 1] ?? null;
+          return (activeMenu.value = lastMenuId ? ((await fetchMenu(lastMenuId.id)) ?? []) : null);
+        }
+      } else {
+        // (2.2) jika menu yang di tutup bukan root, maka cari sibling yang terbuka
+        const sibling = mockMenu.value.find((m) => m.parentId === menu.parentId && m.isExpanded);
+        if (sibling) {
+          return (activeMenu.value = mockMenu.value.filter((m) => m.parentId === sibling.id) ?? []);
+        } else {
+          const parentMenu = mockMenu.value.find((m) => m.id === menu.parentId);
+          if (parentMenu) {
+            return (activeMenu.value = (await fetchMenu(parentMenu.id)) ?? []);
+          }
+          return [];
+        }
+      }
     }
-  };
+  }
 
-  const setActiveMenu = async (menuId: number): Promise<MenuRevampInterface[] | null> => {
-    const menu = mockMenu.value.find((m) => m.id === menuId);
-    if (!menu) return null;
-
-    const siblingsToClose = mockMenu.value.filter(
-      (m) => m.isExpanded && m.parentId === menu.parentId && m.id !== menuId,
-    );
-    siblingsToClose.forEach((m) => {
-      m.isExpanded = false;
-      removeDescendants(m.id);
-    });
-
-    const isExpanding = !menu.isExpanded;
-    menu.isExpanded = isExpanding;
-
-    if (isExpanding) {
-      // sisipkan children
-      const children = (await fetchMenu(menuId)) ?? [];
-      activeMenu.value = children; // update active menu dengan children yang baru
-      const existingIds = mockMenu.value.map((m) => m.id);
-      const newChildren = children.filter((c) => !existingIds.includes(c.id));
-      const parentIndex = mockMenu.value.findIndex((m) => m.id === menuId);
-      mockMenu.value.splice(parentIndex + 1, 0, ...newChildren);
-      return children.map((item) => ({ ...item }));
-    } else {
-      // tutup menu collapse
-      removeDescendants(menuId);
-
-      // Untuk mencari menu yang masih expanded setelah menutup menu children
-      const lastMenu = mockMenu.value.filter((m) => m.isExpanded);
-      const lastMenuId = lastMenu[lastMenu.length - 1] ?? null;
-      activeMenu.value = lastMenuId ? ((await fetchMenu(lastMenuId.id)) ?? []) : null;
-      return activeMenu.value ? activeMenu.value.map((item) => ({ ...item })) : null;
-    }
-  };
+  function openFile() {
+    isOpenFile.value = !isOpenFile.value;
+  }
 
   return {
     activeMenu,
-    setActiveMenu,
-    setActiveMenuMulti,
     mockMenu,
+    setActiveMenuMulti,
     fetchMenu,
     setMenuInitiate,
+    openFile,
+    isOpenFile,
   };
 });

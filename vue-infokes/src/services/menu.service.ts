@@ -14,7 +14,7 @@ export interface MenuResponseData {
 
 export const fetchMenu = async (id: number | null): Promise<MenuResponse> => {
   try {
-    const response = await fetch(`http://localhost:3000/api/menu${id !== null ? `/${id}` : ""}`);
+    const response = await fetch(`http://localhost:3000/api/v1/menu${id !== null ? `/${id}` : ""}`);
     const data = await response.json();
 
     if (data.code !== 200) {

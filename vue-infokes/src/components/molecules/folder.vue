@@ -1,15 +1,9 @@
 <script lang="ts" setup>
 import { useMenuStore } from '@/stores/menu';
-import { watch } from "vue";
+import File from '../atoms/folder/file.vue';
+import Folder from '../atoms/folder/folder.vue';
 
 const menuStore = useMenuStore()
-
-watch(
-  () => menuStore.activeMenu,
-  (newValue, oldValue) => {
-    console.log('Active Menu changed from:', oldValue, 'to:', newValue);
-  }
-);
 </script>
 
 <template>
@@ -17,11 +11,15 @@ watch(
 }">
     Nothing shown, please select a folder
   </div>
-  <div class="flex flex-col items-center w-24 gap-1" v-for="value in menuStore.activeMenu" :key="value.id">
-    <div class="h-24 w-24 bg-[#c8c8c8] rounded-lg flex items-center justify-center">
-      <i class="pi pi-folder"></i>
-    </div>
-    <h2 class="text-xs">{{ value.name }}</h2>
+  <span v-else-if="menuStore.activeMenu?.length > 0" class="flex flex-row gap-4">
+    <span v-for="value in menuStore.activeMenu" :key="value.id">
+      <Folder @click="menuStore.setActiveMenuMulti(value.id, true)" v-if="value.isFolder" :value="value" />
+      <File @click="menuStore.setActiveMenuMulti(value.id)" v-else :value="value" />
+    </span>
+  </span>
+  <div v-else
+    class="h-full w-full border-dashed border-[5px] border-[#bfbfbf] rounded-lg flex justify-center items-center">
+    Folder is empty
   </div>
 </template>
 

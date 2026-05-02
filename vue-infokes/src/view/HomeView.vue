@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Folder from '@/components/molecules/folder.vue';
 import { useMenuStore } from '@/stores/menu';
+import { Button } from 'primevue';
 import { onMounted } from 'vue';
 const menuStore = useMenuStore()
 
@@ -26,12 +27,13 @@ const getDepth = (parentId: number | null): number => {
         <span v-for="value in menuStore.mockMenu" :key="value.id">
           <div v-if="value.isFolder"
             class="flex flex-row justify-start bg-[#3996c5] hover:bg-[#0077b2] py-2 px-4 rounded-lg cursor-pointer"
-            :style="{ marginLeft: `${getDepth(value.parentId) * 16}px` }" @click="menuStore.setActiveMenu(value.id)">
+            :style="{ marginLeft: `${getDepth(value.parentId) * 16}px` }"
+            @click="menuStore.setActiveMenuMulti(value.id)">
             <i :class="`pi ${value.isExpanded ? 'pi-folder-open' : 'pi-folder'} text-md text-[#d9d9d9]`"></i>
-            <span class="text-white ml-2 text-sm">{{ value.name }}</span>
+            <span class="text-white ml-2 text-sm">{{ value.name }} - {{ value.id }}</span>
           </div>
           <div v-else class="flex flex-row items-center justify-start py-2 px-4 cursor-pointer"
-            :style="{ marginLeft: `${getDepth(value.parentId) * 16}px` }" @click="menuStore.setActiveMenu(value.id)">
+            :style="{ marginLeft: `${getDepth(value.parentId) * 16}px` }" @click="menuStore.openFile">
             <i :class="`pi pi-file text-md text-[#494949]`"></i>
             <span class="text-[#494949] ml-2 text-sm">{{ value.name.replaceAll(' ', '_') }}.{{ value.mimeType }}</span>
           </div>
@@ -45,11 +47,15 @@ const getDepth = (parentId: number | null): number => {
     </section>
 
     <!-- Modal Section -->
-    <!-- <div class="fixed inset-0 bg-[#1c1c1c34] flex items-center justify-center z-50">
-      <div class="bg-white p-6 rounded-lg shadow-lg w-1/3">
-        <h2 class="text-xl font-bold mb-4">Create New Folder</h2>
+    <div class="fixed inset-0 bg-[#1c1c1c34] flex items-center justify-center z-50" v-if="menuStore.isOpenFile">
+      <div class="absolute top-4 right-4 bg-white w-8 h-8 flex justify-center items-center cursor-pointer" @click="menuStore.openFile">
+        <Button icon="pi pi-times" class="p-button-rounded p-button-text" aria-label="Save" />
       </div>
-    </div> -->
+
+      <div class="bg-white p-6 rounded-lg shadow-lg w-1/3">
+        <h2 class="text-xl font-bold mb-4">File Akan Muncul Disini</h2>
+      </div>
+    </div>
   </div>
 </template>
 

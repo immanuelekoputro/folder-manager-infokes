@@ -3,7 +3,7 @@ import { cors } from "@elysia/cors";
 import { menuRoutes } from "./routes/menu";
 
 const app = new Elysia({
-  prefix: "/api",
+  prefix: "/api/v1",
 })
   .use(menuRoutes)
   .use(cors())
