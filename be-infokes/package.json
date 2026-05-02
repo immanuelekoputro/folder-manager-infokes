@@ -1,0 +1,26 @@
+{
+  "name": "be-infokes",
+  "version": "1.0.50",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "bun run --watch src/index.ts"
+  },
+  "dependencies": {
+    "@elysia/cors": "^1.4.2",
+    "@sinclair/typebox": "^0.34.49",
+    "drizzle-orm": "^0.45.2",
+    "drizzle-typebox": "^0.3.3",
+    "elysia": "latest",
+    "mysql2": "^3.22.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "bun-types": "latest",
+    "drizzle-kit": "^0.31.10"
+  },
+  "module": "src/index.js",
+  "overrides": {
+    "@sinclair/typebox": "0.32.4",
+    "drizzle-orm": "0.45.2"
+  }
+}
